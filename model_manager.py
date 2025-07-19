@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Tuple
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from .config import Config
+from config import Config
 
 logger = logging.getLogger(__name__)
 

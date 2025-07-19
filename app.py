@@ -4,8 +4,8 @@ Main application file for the URL classification service
 """
 import logging
 from flask import Flask, request, jsonify
-from .config import Config
-from .model_manager import ModelManager
+from config import Config
+from model_manager import ModelManager
 
 # Configure logging
 logging.basicConfig(
