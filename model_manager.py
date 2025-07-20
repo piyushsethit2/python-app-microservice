@@ -50,7 +50,7 @@ class ModelManager:
         except Exception as e:
             logger.error(f"Error initializing model: {e}")
             self.is_model_loaded = False
-    
+        
     def load_model(self, model_name: str = None) -> bool:
         """
         Load the model and tokenizer

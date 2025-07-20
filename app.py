@@ -1,136 +1,98 @@
+#!/usr/bin/env python3
 """
-Flask Application for ML Microservice
-Main application file for the URL classification service
+Python App Microservice for Malicious URL Detection
+Simple Flask service for local testing
 """
-import logging
+
 from flask import Flask, request, jsonify
-from config import Config
-from model_manager import ModelManager
+import logging
+import os
+import re
+from datetime import datetime
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, Config.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Initialize model manager
-model_manager = ModelManager()
+# Simple patterns for URL analysis
+SUSPICIOUS_PATTERNS = [
+    r'(?i)(malware|virus|trojan|spyware|phishing|scam|fake|hack|crack|warez|keygen|nulled)',
+    r'(?i)\.(exe|bat|cmd|com|pif|scr|vbs|js|jar|msi|dmg|app|deb|rpm|apk|ipa)$',
+    r'(?i)(bit\.ly|goo\.gl|tinyurl|is\.gd|t\.co|fb\.me|ow\.ly|su\.pr|twurl|snipurl)',
+    r'(?i)(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|0\.|169\.254\.)'
+]
 
 @app.route('/health', methods=['GET'])
-def health_check():
+def health():
     """Health check endpoint"""
     return jsonify({
-        "status": "healthy",
-        "service": "ml-microservice",
-        "model_loaded": model_manager.is_loaded()
+        'status': 'healthy',
+        'service': 'python-app-microservice',
+        'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/info', methods=['GET'])
-def model_info():
-    """Get model information"""
+@app.route('/detect', methods=['POST'])
+def detect():
+    """URL detection endpoint"""
+    try:
+        data = request.get_json()
+        url = data.get('url', '')
+        
+        if not url:
+            return jsonify({'error': 'URL is required'}), 400
+        
+        # Simple detection logic
+        confidence = 0.0
+        issues = []
+        
+        # Check for suspicious patterns
+        for pattern in SUSPICIOUS_PATTERNS:
+            if re.search(pattern, url):
+                issues.append(f"Matched pattern: {pattern}")
+                confidence += 0.2
+        
+        # Check for suspicious keywords
+        suspicious_keywords = ['malware', 'virus', 'trojan', 'spyware', 'phishing', 'scam', 'fake', 'hack']
+        for keyword in suspicious_keywords:
+            if keyword.lower() in url.lower():
+                issues.append(f"Contains suspicious keyword: {keyword}")
+                confidence += 0.1
+        
+        # Determine if malicious
+        is_malicious = confidence > 0.3
+        confidence = min(confidence, 1.0)
+        
+        result = {
+            'url': url,
+            'is_malicious': is_malicious,
+            'confidence': confidence,
+            'issues': issues,
+            'method': 'Python App Microservice',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        logger.info(f"Detection result for {url}: malicious={is_malicious}, confidence={confidence}")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in detection: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint"""
     return jsonify({
-        "service": "ml-microservice",
-        "model_info": model_manager.get_model_info(),
-        "config": {
-            "host": Config.HOST,
-            "port": Config.PORT,
-            "timeout": Config.TIMEOUT
+        'service': 'Python App Microservice',
+        'version': '1.0.0',
+        'endpoints': {
+            'health': '/health',
+            'detect': '/detect'
         }
     })
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    """Predict if URL is malicious"""
-    try:
-        data = request.get_json()
-        
-        if not data or 'url' not in data:
-            return jsonify({
-                "error": "Missing 'url' in request body"
-            }), 400
-        
-        url = data['url']
-        
-        if not url or not isinstance(url, str):
-            return jsonify({
-                "error": "Invalid URL provided"
-            }), 400
-        
-        # Get prediction
-        label, confidence = model_manager.predict(url)
-        
-        logger.info(f"Prediction for {url}: {label} (confidence: {confidence:.3f})")
-        
-        return jsonify({
-            "url": url,
-            "prediction": label,
-            "confidence": confidence,
-            "model": model_manager.model_name
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in prediction: {str(e)}")
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-@app.route('/reload', methods=['POST'])
-def reload_model():
-    """Reload the model with new configuration"""
-    try:
-        data = request.get_json() or {}
-        model_name = data.get('model_name', Config.get_model_name())
-        
-        success = model_manager.load_model(model_name)
-        
-        if success:
-            return jsonify({
-                "status": "success",
-                "message": f"Model reloaded: {model_name}",
-                "model_info": model_manager.get_model_info()
-            })
-        else:
-            return jsonify({
-                "status": "error",
-                "message": f"Failed to load model: {model_name}"
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Error reloading model: {str(e)}")
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-def create_app():
-    """Application factory"""
-    # Load model on startup
-    if not model_manager.load_model():
-        logger.error("Failed to load model on startup")
-    
-    return app
-
 if __name__ == '__main__':
-    # Load model
-    if not model_manager.load_model():
-        logger.error("Failed to load model")
-        exit(1)
-    
-    # Get server config
-    server_config = Config.get_server_config()
-    
-    logger.info(f"Starting ML microservice on {server_config['host']}:{server_config['port']}")
-    logger.info(f"Model: {model_manager.model_name}")
-    logger.info(f"Device: {model_manager.device}")
-    
-    # Run the app
-    app.run(
-        host=server_config['host'],
-        port=server_config['port'],
-        debug=server_config['debug']
-    ) 
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f"Starting Python App Microservice on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=False) 
