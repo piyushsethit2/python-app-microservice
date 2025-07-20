@@ -75,7 +75,7 @@ def detect():
         
         logger.info(f"Detection result for {url}: malicious={is_malicious}, confidence={confidence}")
         return jsonify(result)
-        
+            
     except Exception as e:
         logger.error(f"Error in detection: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -93,6 +93,6 @@ def root():
     })
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5003))
     logger.info(f"Starting Python App Microservice on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False) 

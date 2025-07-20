@@ -7,7 +7,7 @@ services:
     dockerContext: .
     envVars:
       - key: PORT
-        value: 5000
+        value: 5003
       - key: HOST
         value: 0.0.0.0
       - key: HF_MODEL_NAME
