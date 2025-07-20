@@ -120,7 +120,7 @@ def detect():
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint"""
-        return jsonify({
+    return jsonify({
         'service': 'Python App Microservice',
         'version': '1.0.0',
         'endpoints': {
