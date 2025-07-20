@@ -6,13 +6,31 @@ Simple Flask service for local testing
 
 from flask import Flask, request, jsonify
 import logging
+import sys
 import os
 import re
 from datetime import datetime
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure enhanced logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('app.log')
+    ]
+)
+
+# Create logger
 logger = logging.getLogger(__name__)
+
+# Log startup information
+logger.info("=== Python App Microservice Starting ===")
+logger.info("Service: URL detection microservice")
+logger.info("Version: 1.0.0")
+logger.info("Environment: Production")
+logger.info("Features: URL pattern analysis, content detection")
+logger.info("================================================")
 
 app = Flask(__name__)
 
@@ -25,13 +43,32 @@ SUSPICIOUS_PATTERNS = [
 ]
 
 @app.route('/health', methods=['GET'])
-def health():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'python-app-microservice',
-        'timestamp': datetime.now().isoformat()
-    })
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        health_status = {
+            "status": "UP",
+            "service": "Python App Microservice",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "endpoints": {
+                "/detect": "POST - URL detection endpoint",
+                "/health": "GET - Health check endpoint"
+            }
+        }
+        
+        app.logger.info("Health check passed")
+        return jsonify(health_status), 200
+        
+    except Exception as e:
+        app.logger.error(f"Health check failed: {str(e)}")
+        health_status = {
+            "status": "DOWN",
+            "service": "Python App Microservice",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+        return jsonify(health_status), 503
 
 @app.route('/detect', methods=['POST'])
 def detect():
@@ -83,7 +120,7 @@ def detect():
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint"""
-    return jsonify({
+        return jsonify({
         'service': 'Python App Microservice',
         'version': '1.0.0',
         'endpoints': {
